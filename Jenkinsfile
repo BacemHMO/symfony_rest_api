@@ -7,7 +7,7 @@ pipeline {
     HEROKU_API_KEY = credentials('heroku-api-key')
     IMAGE_NAME = 'darinpope/jenkins-example-symfony'
     IMAGE_TAG = 'latest'
-    APP_NAME = 'jenkins-example-symfony'
+    APP_NAME = 'carsymfonyapi'
   }
   stages {
     stage('Build') {
