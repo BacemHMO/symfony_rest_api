@@ -1,32 +1,17 @@
-# Use the official PHP image
-FROM php:8.1-fpm
+FROM composer:2.3.8 as composer_build
 
-# Install Nginx
-RUN apt-get update && apt-get install -y nginx
+WORKDIR /app
+COPY . /app
+RUN composer install --optimize-autoloader --no-dev --ignore-platform-reqs --no-interaction --no-scripts --prefer-dist \
+    && composer require annotations
 
-# Remove the default Nginx configuration
-RUN rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
-
-# Copy your Nginx configuration
-COPY default.conf /etc/nginx/conf.d/
-
-# Set the working directory
-WORKDIR /var/www/html
-
-# Install PHP extensions and other required packages
-RUN apt-get install -y libicu-dev git unzip && docker-php-ext-install intl pdo pdo_mysql
-
-# Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-# Copy the Symfony project files
-COPY . .
-
-# Install Symfony dependencies
-RUN composer install --no-scripts --no-autoloader
-
-# Expose port 9000 for PHP-FPM
-EXPOSE 9000
-
-# Start PHP-FPM and Nginx
-CMD service nginx start && php-fpm
+FROM php:8.1.8-apache
+ENV APP_HOME /var/www/html
+COPY --from=composer_build /app/ /var/www/html/
+RUN sed -i -e "s/html/html\/public/g" /etc/apache2/sites-enabled/000-default.conf \
+    && usermod -u 1000 www-data && groupmod -g 1000 www-data \
+    && chown -R www-data:www-data /var/www/html \
+    && a2enmod rewrite \
+    && sed -i "s/80/\${PORT}/g" /etc/apache2/sites-enabled/000-default.conf /etc/apache2/ports.conf
+ENTRYPOINT []
+CMD docker-php-entrypoint apache2-foreground
